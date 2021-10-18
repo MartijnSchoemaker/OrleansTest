@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: orleans-test
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: orleans-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orleans-test
+  labels:
+    app: orleans-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orleans-test
+  template:
+    metadata:
+      labels:
+        app: orleans-test
+    spec:
+      nodeSelector:
+        "kubernetes.io/os": linux
+      containers:
+      - name: orleans-test
+        image: testmartijn.azurecr.io/orleans-test:0.0.14
+        imagePullPolicy: Always
+        ports:
+          # Define the ports which Orleans uses
+          - containerPort: 11111
+          - containerPort: 30000
+          - containerPort: 10025
+        env:
+          # The Azure Storage connection string for clustering is injected as an
+          # environment variable
+          # It must be created separately using a command such as:
+          # > kubectl create secret generic az-storage-acct `
+          #     --from-file=key=./az-storage-acct.txt
+          - name: STORAGE_CONNECTION_STRING
+            valueFrom:
+              secretKeyRef:
+                name: az-storage-acct
+                key: key
+          # Configure settings to let Orleans know which cluster it belongs to
+          # and which pod it is running in
+          - name: ORLEANS_SERVICE_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['app']
+          - name: ORLEANS_CLUSTER_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.labels['app']
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        resources:
+          requests:
+            cpu: 250m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 128Mi
+      terminationGracePeriodSeconds: 180      
+  minReadySeconds: 60
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pod-reader
+rules:
+- apiGroups: [ "" ]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list", "put", "delete", "post"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pod-reader-binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  apiGroup: ''
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: ''
