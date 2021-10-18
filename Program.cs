@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 using Orleans;
 using Orleans.Hosting;
-using Orleans.Clustering.Kubernetes;
 using OrleansTest.Grains;
 
 namespace OrleansTest
@@ -34,7 +33,6 @@ namespace OrleansTest
                     }
                     else
                     {
-                        builder.UseKubeMembership();
                         builder.UseKubernetesHosting();
                         builder.UseAzureStorageClustering(options => options.ConnectionString = storageConnectionString);
                         builder.ConfigureEndpoints(new Random(1).Next(10001, 10100), new Random(1).Next(20001, 20100));
@@ -42,12 +40,11 @@ namespace OrleansTest
 
                     builder.ConfigureApplicationParts(parts => parts.AddApplicationPart(typeof(BasketGrain).Assembly).WithReferences());
                     builder.AddMemoryGrainStorage("OrleansStorage");
-                    builder.AddMemoryGrainStorageAsDefault();
-                    // builder.AddAzureTableGrainStorageAsDefault(options =>
-                    // {
-                    //     options.UseJson = true;
-                    //     options.ConnectionString = storageConnectionString;
-                    // });
+                    builder.AddAzureTableGrainStorageAsDefault(options =>
+                    {
+                        options.UseJson = true;
+                        options.ConnectionString = storageConnectionString;
+                    });
                 });
     }
 

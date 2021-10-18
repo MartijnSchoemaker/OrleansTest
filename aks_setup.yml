@@ -29,7 +29,7 @@ spec:
         "kubernetes.io/os": linux
       containers:
       - name: orleans-test
-        image: testmartijn.azurecr.io/orleans-test:0.0.14
+        image: testmartijn.azurecr.io/orleans-test:0.0.16
         imagePullPolicy: Always
         ports:
           # Define the ports which Orleans uses
